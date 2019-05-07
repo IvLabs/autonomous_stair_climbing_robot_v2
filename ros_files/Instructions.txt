@@ -1,0 +1,7 @@
+1. source ros
+2. export ROS_MASTER_URI
+3. export ROS_IP
+4. roslaunch turtlebot_bringup minimal.launch
+5. python turtlebot_controller.py
+6. python2 cameranode.py
+7. python fastaipipeline_remote_machine.py

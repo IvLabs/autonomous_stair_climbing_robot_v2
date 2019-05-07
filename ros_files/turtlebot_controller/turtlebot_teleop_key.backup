@@ -1,0 +1,160 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2011, Willow Garage, Inc.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    * Redistributions of source code must retain the above copyright
+#      notice, this list of conditions and the following disclaimer.
+#    * Redistributions in binary form must reproduce the above copyright
+#      notice, this list of conditions and the following disclaimer in the
+#      documentation and/or other materials provided with the distribution.
+#    * Neither the name of the Willow Garage, Inc. nor the names of its
+#      contributors may be used to endorse or promote products derived from
+#       this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+
+import rospy
+
+from geometry_msgs.msg import Twist
+from std_msgs.msg import Int32
+
+import sys, select, termios, tty
+
+msg = """
+Control Your Turtlebot!
+---------------------------
+Moving around:
+   u    i    o
+   j    k    l
+   m    ,    .
+
+q/z : increase/decrease max speeds by 10%
+w/x : increase/decrease only linear speed by 10%
+e/c : increase/decrease only angular speed by 10%
+space key, k : force stop
+anything else : stop smoothly
+
+CTRL-C to quit
+"""
+
+moveBindings = {
+        ',':(-1,0),     # Move Straight
+        '.':(-1,-1),    # + Turn Left
+        'm':(-1,1),     # + Turn Right
+           }
+
+speed = .2
+turn = 3
+
+
+def callback(keyr):
+    print('ireached')
+    read = keyr.data
+    print(read)
+    speed = .1
+    turn = 2.0
+    x = 0
+    key = 0
+    th = 0
+    status = 0
+    count = 0
+    acc = 0.2
+    target_speed = 0
+    target_turn = 0
+    control_speed = 0
+    control_turn = 0
+    if read > -1 :
+
+        if read == 3 :
+            key = ','
+            print(key)
+        elif read == 1 :
+            key = 'm'
+            print(key)
+        elif read == 0 :
+            key = '.'
+            print(key)
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+
+        #print(vels(speed,turn))
+
+        if key in moveBindings.keys():
+            x = moveBindings[key][0]
+            th = moveBindings[key][1]
+            count = 0
+
+        elif key == ' ' or key == 'k' :
+            x = 0
+            th = 0
+            control_speed = 0
+            control_turn = 0
+        else:
+            count = count + 1
+            if count > 4:
+                x = 0
+                th = 0
+            if (key == '\x03'):
+                exit()
+
+        target_speed = speed * x
+        target_turn = turn * th
+
+        if target_speed > control_speed:
+            control_speed = min( target_speed, control_speed + 0.1 )
+
+        elif target_speed < control_speed:
+            control_speed = max( target_speed, control_speed - 0.1 )
+        else:
+            control_speed = target_speed
+
+        if target_turn > control_turn:
+            control_turn = min( target_turn, control_turn + 0.5 )
+        elif target_turn < control_turn:
+            control_turn = max( target_turn, control_turn - 0.5 )
+        else:
+            control_turn = target_turn
+
+        twist = Twist()
+        twist.linear.x = 3*control_speed; twist.linear.y = 0; twist.linear.z = 0
+        twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 1*control_turn
+        pub.publish(twist)
+        print(twist)
+
+        #print("loop: {0}".format(count))
+        #print("target: vx: {0}, wz: {1}".format(target_speed, target_turn))
+        #print("publihsed: vx: {0}, wz: {1}".format(twist.linear.x, twist.angular.z))
+
+
+        #twist = Twist()
+        #twist.linear.x = 0; twist.linear.y = 0; twist.linear.z = 0
+        #twist.angular.x = 0; twist.angular.y = 0; twist.angular.z = 0
+        #pub.publish(twist)
+
+
+#speed = 0.2
+
+if __name__=="__main__":
+
+    settings = termios.tcgetattr(sys.stdin)
+    print(msg)
+    rospy.init_node('turtlebot_teleop')
+    pub = rospy.Publisher('~cmd_vel', Twist, queue_size=10)
+    print('this')
+    rospy.Subscriber('/in_put', Int32 , callback)
+    print(',')
+    termios.tcsetattr(sys.stdin, termios.TCSADRAIN, settings)
+    rospy.spin()
