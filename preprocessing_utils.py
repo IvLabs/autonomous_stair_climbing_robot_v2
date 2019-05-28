@@ -1,8 +1,14 @@
-import cv2 as cv
+import sys
+try:
+    print('removed ros path')
+    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')import cv2 as cv
+except:
+    pass
 import numpy as np
 import argparse
 import os
 import json
+import csv
 
 
 def disp_mask(image = None, Mask = None):
@@ -37,6 +43,7 @@ def get_mask():
     if not os.path.exists(args.directory):
         os.mkdir(args.directory)
         print('Created out_dir')
+        data = csv.reader(open('data.csv'))
 
     for name in os.listdir(args.input_image):
         frame = cv.imread(args.input_image + '/' + name)
